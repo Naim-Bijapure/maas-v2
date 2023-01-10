@@ -1,11 +1,16 @@
 import { Dropdown, message, Row, Col, Button } from "antd";
 
 import { PlusCircleOutlined } from "@ant-design/icons";
+import { Link } from "react-router-dom";
 
 import AppLayout from "./components/AppLayout";
 import Address from "./components/Address";
 import { Home } from "./views";
 import { Faucet, GasGauge, Ramp } from "./components";
+import CreateWallet from "./views/CreateWallet";
+import StoreProvider from "./store/StoreProvider";
+import WalletList from "./components/MultiSig/WalletList";
+import NetworkDisplay from "./components/NetworkDisplay";
 
 import "antd/dist/antd.css";
 
@@ -52,7 +57,7 @@ import { useStaticJsonRPC } from "./hooks";
 */
 
 /// 📡 What chain are your contracts deployed to?
-const initialNetwork = NETWORKS.mainnet; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
+const initialNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
 const DEBUG = true;
@@ -80,16 +85,18 @@ const WALLET_CONTRACT_ADDRESS = "0x924E029aa245AbADC5Ebd379457eAa48Cf0E4422";
 // const WALLET_CONTRACT_ADDRESS = "0xb3E2A650c9032A40168148e5b1bdb69E68A461D8";
 
 const multiSigWalletABI = MultiSigWalletAbi["abi"];
-const contractName = "MultiSigWallet";
+const walletContractName = "MultiSigWallet";
+const factoryContractName = "MultiSigFactory";
 
 function App(props) {
-  // specify all the chains your app is available on. Eg: ['localhost', 'mainnet', ...otherNetworks ]
-  // reference './constants.js' for other networks
   const networkOptions = [initialNetwork.name, "mainnet", "goerli"];
 
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
   const [selectedNetwork, setSelectedNetwork] = useState(networkOptions[0]);
+  const [selectedWalletAddress, setSelectedWalletAddress] = useState(undefined);
+  const [refreshToggle, setRefreshToggle] = useState(false);
+  console.log(`n-🔴 => App => refreshToggle`, refreshToggle);
   const location = useLocation();
 
   const targetNetwork = NETWORKS[selectedNetwork];
@@ -207,6 +214,11 @@ function App(props) {
     writeContracts.MultiSigWallet = new ethers.Contract(WALLET_CONTRACT_ADDRESS, multiSigWalletABI, userSigner);
   };
 
+  const onChangeWallet = walletAddress => {
+    console.log(`n-🔴 => onChangeWal => walletAddress`, walletAddress);
+    setSelectedWalletAddress(walletAddress);
+  };
+
   /**
    useEffects
   */
@@ -268,6 +280,7 @@ function App(props) {
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
+  // TODO: REFACTORE IN ANOTHER FILE
   // top header bar
   const HeaderBar = (
     <>
@@ -301,139 +314,107 @@ function App(props) {
         </div>
       </MainHeader>
 
-      {/* <NetworkDisplay
+      <NetworkDisplay
         NETWORKCHECK={NETWORKCHECK}
         localChainId={localChainId}
         selectedChainId={selectedChainId}
         targetNetwork={targetNetwork}
         logoutOfWeb3Modal={logoutOfWeb3Modal}
         USE_NETWORK_SELECTOR={USE_NETWORK_SELECTOR}
-      /> */}
+      />
     </>
   );
 
-  const handleButtonClick = e => {
-    message.info("Click on left button.");
-    console.log("click left button", e);
+  // GLOBAL STATES
+  const store = {
+    contractAddress: WALLET_CONTRACT_ADDRESS,
+    selectedWalletAddress,
+    address,
+    BACKEND_URL,
+    readContracts,
+    writeContracts,
+    localProvider,
+    userSigner,
+    price,
+    mainnetProvider,
+    blockExplorer,
+    walletContractName,
+    factoryContractName,
+    tx,
+    onChangeWallet,
+    refreshToggle,
+    setRefreshToggle,
   };
-  const handleMenuClick = e => {
-    message.info("Click on menu item.");
-    console.log("click", e);
-  };
-  const itemsDropdown = [
-    { label: "wallet 1", key: "item-1" },
-    { label: "wallet 2", key: "item-2" },
-  ];
-
-  const menuProps = {
-    items: itemsDropdown,
-    onClick: handleMenuClick,
-  };
-
-  const currentWallet = (
-    <>
-      <div className="logo- mt-3 p-2  rounded-md flex flex-col items-center shadow-sm">
-        <Dropdown.Button size="middle" className="flex justify-center" menu={menuProps} onClick={handleButtonClick}>
-          <div>
-            <Address address={WALLET_CONTRACT_ADDRESS} blockieSize={10} fontSize={13} />
-          </div>
-        </Dropdown.Button>
-        <div className="text-gray-400 text-xs mt-2">Scholarship buidlguidl</div>
-        <Button type="link" shape="" size={"small"}>
-          Create wallet
-        </Button>
-      </div>
-    </>
-  );
 
   return (
-    <AppLayout className="" header={HeaderBar} currentWallet={currentWallet}>
-      {/* <Menu style={{ textAlign: "center", marginTop: 20 }} selectedKeys={[location.pathname]} mode="horizontal">
-        <Menu.Item key="/">
-          <Link to="/">App Home</Link>
-        </Menu.Item>
-        <Menu.Item key="/debug">
-          <Link to="/debug">Debug Contracts</Link>
-        </Menu.Item>
-        <Menu.Item key="/hints">
-          <Link to="/hints">Hints</Link>
-        </Menu.Item>
-        <Menu.Item key="/exampleui">
-          <Link to="/exampleui">ExampleUI</Link>
-        </Menu.Item>
-        <Menu.Item key="/mainnetdai">
-          <Link to="/mainnetdai">Mainnet DAI</Link>
-        </Menu.Item>
-        <Menu.Item key="/subgraph">
-          <Link to="/subgraph">Subgraph</Link>
-        </Menu.Item>
-      </Menu> */}
+    <StoreProvider store={{ ...store }}>
+      <AppLayout className="" header={HeaderBar}>
+        <Switch>
+          <Route exact path="/">
+            {/* TODO: USE CONTEXT STATES */}
+            <Home
+              contractAddress={WALLET_CONTRACT_ADDRESS}
+              address={address}
+              BACKEND_URL={BACKEND_URL}
+              readContracts={readContracts}
+              writeContracts={writeContracts}
+              localProvider={localProvider}
+              userSigner={userSigner}
+              price={price}
+              mainnetProvider={mainnetProvider}
+              blockExplorer={blockExplorer}
+              contractName={walletContractName}
+              currentMultiSigAddress={WALLET_CONTRACT_ADDRESS}
+              contractNameForEvent={walletContractName}
+              tx={tx}
+            />
+          </Route>
 
-      <Switch>
-        <Route exact path="/">
-          <Home
-            contractAddress={WALLET_CONTRACT_ADDRESS}
-            address={address}
-            BACKEND_URL={BACKEND_URL}
-            readContracts={readContracts}
-            writeContracts={writeContracts}
-            localProvider={localProvider}
-            userSigner={userSigner}
-            price={price}
-            mainnetProvider={mainnetProvider}
-            blockExplorer={blockExplorer}
-            contractName={contractName}
-            // reDeployWallet={undefined}
-            currentMultiSigAddress={WALLET_CONTRACT_ADDRESS}
-            contractNameForEvent={contractName}
-            tx={tx}
-          />
-        </Route>
+          <Route exact path="/createWallet">
+            <CreateWallet />
+          </Route>
+        </Switch>
 
-        <Route exact path="/test">
-          yo cool
-        </Route>
-      </Switch>
+        <ThemeSwitch />
 
-      <ThemeSwitch />
+        {/* 🗺 Extra UI like gas price, eth price, faucet, and support: */}
+        <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
+          <Row align="middle" gutter={[4, 4]}>
+            <Col span={8}>
+              <Ramp price={price} address={address} networks={NETWORKS} />
+            </Col>
 
-      {/* 🗺 Extra UI like gas price, eth price, faucet, and support: */}
-      <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
-        <Row align="middle" gutter={[4, 4]}>
-          <Col span={8}>
-            <Ramp price={price} address={address} networks={NETWORKS} />
-          </Col>
+            <Col span={8} style={{ textAlign: "center", opacity: 0.8 }}>
+              <GasGauge gasPrice={gasPrice} />
+            </Col>
+            <Col span={8} style={{ textAlign: "center", opacity: 1 }}>
+              <Button
+                onClick={() => {
+                  window.open("https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA");
+                }}
+                size="large"
+                shape="round"
+              >
+                <span style={{ marginRight: 8 }} role="img" aria-label="support">
+                  💬
+                </span>
+                Support
+              </Button>
+            </Col>
+          </Row>
 
-          <Col span={8} style={{ textAlign: "center", opacity: 0.8 }}>
-            <GasGauge gasPrice={gasPrice} />
-          </Col>
-          <Col span={8} style={{ textAlign: "center", opacity: 1 }}>
-            <Button
-              onClick={() => {
-                window.open("https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA");
-              }}
-              size="large"
-              shape="round"
-            >
-              <span style={{ marginRight: 8 }} role="img" aria-label="support">
-                💬
-              </span>
-              Support
-            </Button>
-          </Col>
-        </Row>
-
-        <Row align="middle" gutter={[4, 4]}>
-          <Col span={24}>
-            {faucetAvailable ? (
-              <Faucet localProvider={localProvider} price={price} ensProvider={mainnetProvider} />
-            ) : (
-              ""
-            )}
-          </Col>
-        </Row>
-      </div>
-    </AppLayout>
+          <Row align="middle" gutter={[4, 4]}>
+            <Col span={24}>
+              {faucetAvailable ? (
+                <Faucet localProvider={localProvider} price={price} ensProvider={mainnetProvider} />
+              ) : (
+                ""
+              )}
+            </Col>
+          </Row>
+        </div>
+      </AppLayout>
+    </StoreProvider>
   );
 }
 

@@ -1,18 +1,18 @@
 import {
-  UserSwitchOutlined,
-  HomeOutlined,
-  TransactionOutlined,
   AppstoreAddOutlined,
-  SettingOutlined,
   EditOutlined,
+  HomeOutlined,
+  SettingOutlined,
+  TransactionOutlined,
+  UserSwitchOutlined,
 } from "@ant-design/icons";
-import { Layout, Menu, Button, Dropdown, message, Space, Tooltip } from "antd";
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-
-import Address from "./Address";
+import { Layout, Menu } from "antd";
+import React from "react";
+import { Link } from "react-router-dom";
+import WalletList from "./MultiSig/WalletList";
 
 const { Header, Content, Footer, Sider } = Layout;
+
 function getItem(label, key, icon, children) {
   return {
     key,
@@ -21,7 +21,7 @@ function getItem(label, key, icon, children) {
     label,
   };
 }
-const items = [
+const MenuItems = [
   getItem(
     "Home",
     "1",
@@ -75,15 +75,8 @@ const items = [
       <Link className="m-1" to="/settings"></Link>
     </>,
   ),
-
-  // getItem("Manage", "sub1", <UserOutlined />, [getItem("Tom", "3"), getItem("Bill", "4"), getItem("Alex", "5")]),
-  // getItem("Team", "sub2", <TeamOutlined />, [getItem("Team 1", "6"), getItem("Team 2", "8")]),
 ];
-const AppLayout = ({ header, currentWallet, children }) => {
-  // const [collapsed, setCollapsed] = useState(false);
-
-  // const location = useLocation();
-
+const AppLayout = ({ header, children }) => {
   return (
     <Layout
       style={{
@@ -91,11 +84,11 @@ const AppLayout = ({ header, currentWallet, children }) => {
       }}
     >
       <Sider collapsed={false} theme="light" width={270}>
-        {/* current wallet */}
-        {currentWallet}
+        {/* current wallet list */}
+        <WalletList />
 
         {/* menu list */}
-        <Menu theme="light" defaultSelectedKeys={["1"]} mode="inline" items={items} />
+        <Menu theme="light" defaultSelectedKeys={["1"]} mode="inline" items={MenuItems} />
       </Sider>
       <Layout className="site-layout">
         {/* header */}
@@ -107,7 +100,7 @@ const AppLayout = ({ header, currentWallet, children }) => {
           }}
         >
           <div
-            className="site-layout-background"
+            className=""
             style={{
               padding: 24,
               minHeight: 360,
@@ -123,7 +116,7 @@ const AppLayout = ({ header, currentWallet, children }) => {
             textAlign: "center",
           }}
         >
-          Ant Design ©2018 Created by Ant UED
+          built with ❤️ by naimbijapure.eth
         </Footer>
       </Layout>
     </Layout>
