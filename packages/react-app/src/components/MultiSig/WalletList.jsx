@@ -7,12 +7,15 @@ import { Address } from "../";
 import { useStore } from "../../store/useStore";
 import { useEffect } from "react";
 import useEvent from "../../hooks/useEvent";
+import { useState } from "react";
 
 const WALLET_CONTRACT_ADDRESS = "0x924E029aa245AbADC5Ebd379457eAa48Cf0E4422";
 
 export default function WalletList() {
   const [store, dispatch] = useStore();
+  const [currentWalletName, setCurrentWalletName] = useState();
   const {
+    address,
     readContracts,
     localProvider,
     factoryContractName,
@@ -20,8 +23,10 @@ export default function WalletList() {
     onChangeWallet,
     refreshToggle,
     setRefreshToggle,
+    walletData,
+    setWalletData,
+    targetNetwork,
   } = store;
-  console.log(`n-🔴 => WalletList => selectedWalletAddress`, selectedWalletAddress);
 
   // const wallets = useEventListener(
   //   factoryContractName in readContracts && readContracts,
@@ -40,40 +45,59 @@ export default function WalletList() {
 
   const handleButtonClick = e => {
     message.info("Click on left button.");
-    // console.log("n-click left button", e.target.value);
   };
 
-  const handleMenuClick = ({ key }) => {
-    console.log(`n-🔴 => handleMenuClick => key`, key);
-    onChangeWallet(key);
+  const handleWalletChange = ({ key }) => {
+    let selectedWallet = wallets.find(data => data.args.contractAddress === key);
+    onChangeWallet(key, selectedWallet.args.name);
+    setCurrentWalletName(selectedWallet.args.name);
   };
 
   const filterWallets = () => {
     if (wallets.length === 0) {
       return [];
     }
-    return wallets.map(data => {
-      let wallet = data.args;
-      return {
-        label: wallet.name,
-        key: wallet.contractAddress,
-      };
-    });
+    return wallets
+      .filter(data => data.args.creator === address)
+      .map(data => {
+        let wallet = data.args;
+        return {
+          label: wallet.name,
+          key: wallet.contractAddress,
+        };
+      });
   };
 
   const walletList = [...filterWallets()];
 
   const menuProps = {
     items: walletList,
-    onClick: handleMenuClick,
+    onClick: handleWalletChange,
   };
 
   useEffect(() => {
-    if (wallets && wallets.length > 0) {
-      let lastWallet = wallets[wallets.length - 1].args;
-      onChangeWallet(lastWallet.contractAddress);
+    let filteredWallets = wallets.filter(data => {
+      return data.args.creator === address;
+    });
+    if (wallets && wallets.length > 0 && filteredWallets.length > 0 && address) {
+      let lastWallet = filteredWallets[filteredWallets.length - 1].args;
+
+      if (walletData && walletData[targetNetwork?.chainId]?.selectedWalletAddress === undefined) {
+        onChangeWallet(lastWallet.contractAddress, lastWallet.name);
+        setCurrentWalletName(lastWallet.name);
+        return;
+      }
+
+      if (walletData && walletData[targetNetwork?.chainId]?.selectedWalletAddress !== undefined) {
+        onChangeWallet(
+          walletData[targetNetwork?.chainId]?.selectedWalletAddress,
+          walletData[targetNetwork?.chainId]?.selectedWalletName,
+        );
+        setCurrentWalletName(walletData[targetNetwork?.chainId]?.selectedWalletName);
+        return;
+      }
     }
-  }, [wallets]);
+  }, [wallets, address]);
 
   return (
     <div>
@@ -83,7 +107,7 @@ export default function WalletList() {
             <Address address={selectedWalletAddress} blockieSize={10} fontSize={13} />
           </div>
         </Dropdown.Button>
-        <div className="text-gray-400 text-xs mt-2">Scholarship buidlguidl</div>
+        <div className="text-gray-400 text-sm mt-2">{currentWalletName}</div>
         <Button type="link" shape="" size={"small"}>
           <Link to={"/createWallet"}>Create wallet</Link>
         </Button>

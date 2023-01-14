@@ -5,6 +5,7 @@ import {
   SettingOutlined,
   TransactionOutlined,
   UserSwitchOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
 import React from "react";
@@ -36,7 +37,7 @@ const MenuItems = [
     "2",
     <>
       <EditOutlined />
-      <Link className="m-1" to="/propoose"></Link>
+      <Link className="m-1" to="/newTranscaction"></Link>
     </>,
   ),
 
@@ -50,7 +51,7 @@ const MenuItems = [
   ),
 
   getItem(
-    "Apps",
+    "Safe Apps",
     "4",
     <>
       <AppstoreAddOutlined />
@@ -73,6 +74,15 @@ const MenuItems = [
     <>
       <SettingOutlined />
       <Link className="m-1" to="/settings"></Link>
+    </>,
+  ),
+
+  getItem(
+    "Help",
+    "7",
+    <>
+      <QuestionCircleOutlined />
+      <Link className="m-1" to="/help"></Link>
     </>,
   ),
 ];

@@ -2,15 +2,16 @@ import { Dropdown, message, Row, Col, Button } from "antd";
 
 import { PlusCircleOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import { useContractReader } from "eth-hooks";
 
 import AppLayout from "./components/AppLayout";
 import Address from "./components/Address";
-import { Home } from "./views";
+import { Home, NewTranscaction, Transcations, CreateWallet } from "./views";
 import { Faucet, GasGauge, Ramp } from "./components";
-import CreateWallet from "./views/CreateWallet";
 import StoreProvider from "./store/StoreProvider";
 import WalletList from "./components/MultiSig/WalletList";
 import NetworkDisplay from "./components/NetworkDisplay";
+import useLocalStorage from "./hooks/useLocalStorage";
 
 import "antd/dist/antd.css";
 
@@ -91,18 +92,29 @@ const factoryContractName = "MultiSigFactory";
 function App(props) {
   const networkOptions = [initialNetwork.name, "mainnet", "goerli"];
 
+  // const targetNetwork = NETWORKS[selectedNetwork];
+
+  const cachedNetwork = window.localStorage.getItem("network");
+  let targetNetwork = NETWORKS[cachedNetwork || "mainnet"];
+
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
   const [selectedNetwork, setSelectedNetwork] = useState(networkOptions[0]);
   const [selectedWalletAddress, setSelectedWalletAddress] = useState(undefined);
   const [refreshToggle, setRefreshToggle] = useState(false);
-  console.log(`n-🔴 => App => refreshToggle`, refreshToggle);
-  const location = useLocation();
+  const [isWalletLoaded, setIsWalletLoaded] = useState(false);
 
-  const targetNetwork = NETWORKS[selectedNetwork];
+  const [mainWalletConnectSession, setMainWalletConnectSession] = useLocalStorage("walletConnectSession_main");
+  // a local storage to persist selected wallet data
+  const [walletData, setWalletData] = useLocalStorage("_walletData", {
+    [targetNetwork.chainId]: {
+      selectedWalletAddress: undefined,
+      selectedWalletName: undefined,
+    },
+  });
 
   // backend transaction handler:
-  let BACKEND_URL = "http://localhost:49899/";
+  let BACKEND_URL = "http://localhost:49899";
   if (targetNetwork && targetNetwork.name && targetNetwork.name !== "localhost") {
     BACKEND_URL = "https://backend.multisig.lol:49899/";
   }
@@ -186,6 +198,9 @@ function App(props) {
   // If you want to bring in the mainnet DAI contract it would look like:
   const mainnetContracts = useContractLoader(mainnetProvider, contractConfig);
 
+  const nonce = useContractReader(readContracts, walletContractName, "nonce");
+  const signaturesRequired = useContractReader(readContracts, walletContractName, "signaturesRequired");
+
   const loadWeb3Modal = useCallback(async () => {
     //const provider = await web3Modal.connect();
     const provider = await web3Modal.requestProvider();
@@ -210,13 +225,69 @@ function App(props) {
   }, [setInjectedProvider]);
 
   const loadWalletContract = async () => {
-    readContracts.MultiSigWallet = new ethers.Contract(WALLET_CONTRACT_ADDRESS, multiSigWalletABI, localProvider);
-    writeContracts.MultiSigWallet = new ethers.Contract(WALLET_CONTRACT_ADDRESS, multiSigWalletABI, userSigner);
+    readContracts.MultiSigWallet = new ethers.Contract(selectedWalletAddress, multiSigWalletABI, localProvider);
+    writeContracts.MultiSigWallet = new ethers.Contract(selectedWalletAddress, multiSigWalletABI, userSigner);
+    setIsWalletLoaded(true);
   };
 
-  const onChangeWallet = walletAddress => {
-    console.log(`n-🔴 => onChangeWal => walletAddress`, walletAddress);
+  const onChangeWallet = (walletAddress, walletName) => {
     setSelectedWalletAddress(walletAddress);
+
+    setWalletData({
+      ...walletData,
+      [targetNetwork.chainId]: {
+        selectedWalletAddress: walletAddress,
+        selectedWalletName: walletName,
+      },
+    });
+  };
+  const onChangeNetwork = async value => {
+    if (targetNetwork.chainId !== NETWORKS[value].chainId) {
+      // window.localStorage.setItem("network", value);
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1);
+      let targetNetwork = NETWORKS[value];
+
+      const ethereum = window.ethereum;
+      const data = [
+        {
+          chainId: "0x" + targetNetwork.chainId.toString(16),
+          chainName: targetNetwork.name,
+          nativeCurrency: targetNetwork.nativeCurrency,
+          rpcUrls: [targetNetwork.rpcUrl],
+          blockExplorerUrls: [targetNetwork.blockExplorer],
+        },
+      ];
+      console.log("data", data);
+
+      let switchTx;
+      // https://docs.metamask.io/guide/rpc-api.html#other-rpc-methods
+      try {
+        switchTx = await ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: data[0].chainId }],
+        });
+      } catch (switchError) {
+        // not checking specific error code, because maybe we're not using MetaMask
+        try {
+          switchTx = await ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: data,
+          });
+        } catch (addError) {
+          // handle "add" error
+        }
+      }
+
+      window.localStorage.setItem("network", value);
+      // setTimeout(() => {
+      // window.location.reload();
+      // }, 1);
+
+      if (switchTx) {
+      }
+    }
   };
 
   /**
@@ -273,10 +344,32 @@ function App(props) {
   }, [loadWeb3Modal]);
 
   useEffect(() => {
-    if ("MultiSigFactory" in readContracts && "MultiSigFactory" in writeContracts) {
+    if ("MultiSigFactory" in readContracts && "MultiSigFactory" in writeContracts && selectedWalletAddress) {
       loadWalletContract();
     }
-  }, [readContracts, writeContracts]);
+  }, [readContracts, writeContracts, selectedWalletAddress]);
+
+  // -----------------
+  //   page reload on metamask account and network change
+  // -----------------
+  useEffect(() => {
+    window.ethereum?.on("accountsChanged", function () {
+      window.location.reload();
+    });
+    // detect Network account change
+    window.ethereum?.on("networkChanged", function () {
+      if (deployedContracts[targetNetwork.chainId] === undefined) {
+        console.log("NO FACTORY FOUND LOGING OUT !!!");
+        logoutOfWeb3Modal();
+      } else {
+        window.location.reload();
+      }
+    });
+
+    if (mainWalletConnectSession !== undefined) {
+      localStorage.setItem("walletconnect", JSON.stringify(mainWalletConnectSession));
+    }
+  }, []);
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
@@ -288,11 +381,12 @@ function App(props) {
         <div className="relative flex items-center justify-center" key={address}>
           {USE_NETWORK_SELECTOR && (
             <div className="">
-              <NetworkSwitch
+              {/* <NetworkSwitch
                 networkOptions={networkOptions}
                 selectedNetwork={selectedNetwork}
                 setSelectedNetwork={setSelectedNetwork}
-              />
+              /> */}
+              <NetworkSwitch selectedNetwork={targetNetwork.name} onChangeNetwork={onChangeNetwork} />
             </div>
           )}
 
@@ -327,7 +421,8 @@ function App(props) {
 
   // GLOBAL STATES
   const store = {
-    contractAddress: WALLET_CONTRACT_ADDRESS,
+    nonce,
+    signaturesRequired,
     selectedWalletAddress,
     address,
     BACKEND_URL,
@@ -344,6 +439,9 @@ function App(props) {
     onChangeWallet,
     refreshToggle,
     setRefreshToggle,
+    walletData,
+    setWalletData,
+    targetNetwork,
   };
 
   return (
@@ -351,27 +449,19 @@ function App(props) {
       <AppLayout className="" header={HeaderBar}>
         <Switch>
           <Route exact path="/">
-            {/* TODO: USE CONTEXT STATES */}
-            <Home
-              contractAddress={WALLET_CONTRACT_ADDRESS}
-              address={address}
-              BACKEND_URL={BACKEND_URL}
-              readContracts={readContracts}
-              writeContracts={writeContracts}
-              localProvider={localProvider}
-              userSigner={userSigner}
-              price={price}
-              mainnetProvider={mainnetProvider}
-              blockExplorer={blockExplorer}
-              contractName={walletContractName}
-              currentMultiSigAddress={WALLET_CONTRACT_ADDRESS}
-              contractNameForEvent={walletContractName}
-              tx={tx}
-            />
+            {isWalletLoaded && walletContractName in readContracts && <Home key={selectedWalletAddress} />}
           </Route>
 
           <Route exact path="/createWallet">
             <CreateWallet />
+          </Route>
+
+          <Route exact path="/newTranscaction">
+            <NewTranscaction />
+          </Route>
+
+          <Route exact path="/transcactions">
+            <Transcations />
           </Route>
         </Switch>
 

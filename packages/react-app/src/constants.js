@@ -219,7 +219,7 @@ export const getFactoryVersion = async contract => {
     const factoryVersion = await contract.factoryVersion();
     return Number(factoryVersion.toString());
   } catch (error) {
-    // console.log("n-error: ", error);
+    console.log("n-error: ", error);
     // if no factory version variable that mean its version zero
     console.log("its older factory version !!");
     return 0;

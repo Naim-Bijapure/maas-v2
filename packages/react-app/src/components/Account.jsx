@@ -66,7 +66,7 @@ export default function Account({
 
   return (
     <div className="flex  items-center justify-center">
-      <div className="border border-gray-300 m-2   flex  items-center justify-center  rounded-sm">
+      <div className="border- border-gray-300- m-1 p-1   flex  items-center justify-center  rounded-sm">
         <Balance address={address} provider={localProvider} price={price} size={15} />
         <Wallet
           address={address}
@@ -76,7 +76,7 @@ export default function Account({
           price={price}
           color={currentTheme === "light" ? "#1890ff" : "#2caad9"}
           size={"1.2rem"}
-          padding={"0px"}
+          padding={"5px"}
           gasPrice={gasPrice}
         />
         <div
@@ -90,7 +90,7 @@ export default function Account({
               ensProvider={mainnetProvider}
               blockExplorer={blockExplorer}
               blockieSize={8}
-              fontSize={13}
+              fontSize={15}
             />
           )}
         </div>
