@@ -123,8 +123,8 @@ function App(props) {
   // backend transaction handler:
   let BACKEND_URL = "http://localhost:49899";
   if (targetNetwork && targetNetwork.name && targetNetwork.name !== "localhost") {
-    // BACKEND_URL = "https://backend.multisig.lol:49899/";
-    BACKEND_URL = "http://localhost:49899";
+    // BACKEND_URL = "https://backend.multisig.lol:49899";
+    BACKEND_URL = "https://gorgeous-leather-jacket-crow.cyclic.app"; // cyclic.sh backend
   }
 
   // 🔭 block explorer URL
