@@ -34,4 +34,8 @@ export { default as WallectConnectInput } from "./MultiSig/WallectConnectInput";
 export { default as WalletConnectV2 } from "./MultiSig/WalletConnectV2";
 export { default as TranscactionHistory } from "./MultiSig/TranscactionHistory";
 export { default as TranscactionPool } from "./MultiSig/TranscactionPool";
+export { default as SafeApp } from "./MultiSig/SafeApp";
+export { default as ManageOwners } from "./MultiSig/ManageOwners";
+export { default as ManageWallets } from "./MultiSig/ManageWallets";
+export { default as ImportWallets } from "./MultiSig/ImportWallets";
 // export { default as ImportMultiSigModal } from "./MultiSig/ImportMultiSigModal";

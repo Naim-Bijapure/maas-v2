@@ -1,17 +1,16 @@
-import { Dropdown, message, Row, Col, Button } from "antd";
+import { Button, Col, Row } from "antd";
 
-import { PlusCircleOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+
 import { useContractReader } from "eth-hooks";
 
-import AppLayout from "./components/AppLayout";
-import Address from "./components/Address";
-import { Home, NewTranscaction, Transcations, CreateWallet } from "./views";
 import { Faucet, GasGauge, Ramp } from "./components";
-import StoreProvider from "./store/StoreProvider";
-import WalletList from "./components/MultiSig/WalletList";
+import AppLayout from "./components/AppLayout";
 import NetworkDisplay from "./components/NetworkDisplay";
 import useLocalStorage from "./hooks/useLocalStorage";
+import StoreProvider from "./store/StoreProvider";
+import { CreateWallet, Home, NewTranscaction, Transcations, SafeApps, Manage } from "./views";
+import { SafeInjectProvider } from "./store/SafeInjectProvider";
 
 import "antd/dist/antd.css";
 
@@ -25,10 +24,10 @@ import {
 import { useExchangeEthPrice } from "eth-hooks/dapps/dex";
 import { ethers } from "ethers";
 import React, { useCallback, useEffect, useState } from "react";
-import { Route, Switch, useLocation } from "react-router-dom";
+import { Route, Switch } from "react-router-dom";
 
 import "./App.css";
-import { Account, MainHeader, NetworkSwitch, ThemeSwitch } from "./components";
+import { Account, MainHeader, NetworkSwitch, SafeApp, ThemeSwitch } from "./components";
 import { ALCHEMY_KEY, NETWORKS } from "./constants";
 import externalContracts from "./contracts/external_contracts";
 // contracts
@@ -37,6 +36,8 @@ import _deployedContracts from "./contracts/deployed_contracts.json";
 import hardhatContracts from "./contracts/hardhat_contracts.json";
 import { Transactor, Web3ModalSetup, getRPCPollTime } from "./helpers";
 import { useStaticJsonRPC } from "./hooks";
+// import SafeApps from "./views/SafeApps";
+// import Manage from "./views/Manage";
 
 /*
     Welcome to 🏗 scaffold-eth !
@@ -90,6 +91,7 @@ const walletContractName = "MultiSigWallet";
 const factoryContractName = "MultiSigFactory";
 
 function App(props) {
+  const history = useHistory();
   const networkOptions = [initialNetwork.name, "mainnet", "goerli"];
 
   // const targetNetwork = NETWORKS[selectedNetwork];
@@ -103,8 +105,13 @@ function App(props) {
   const [selectedWalletAddress, setSelectedWalletAddress] = useState(undefined);
   const [refreshToggle, setRefreshToggle] = useState(false);
   const [isWalletLoaded, setIsWalletLoaded] = useState(false);
+  const [signaturesRequired, setSignaturesRequired] = useState(false);
+  const [userWallets, setUserWallets] = useState([]);
 
   const [mainWalletConnectSession, setMainWalletConnectSession] = useLocalStorage("walletConnectSession_main");
+  const [importedWalletList, setImportedWalletList] = useLocalStorage("importedWalletList", []);
+  const [hiddenWalletList, setHiddenWalletList] = useLocalStorage("hiddenWalletList", []);
+
   // a local storage to persist selected wallet data
   const [walletData, setWalletData] = useLocalStorage("_walletData", {
     [targetNetwork.chainId]: {
@@ -116,7 +123,8 @@ function App(props) {
   // backend transaction handler:
   let BACKEND_URL = "http://localhost:49899";
   if (targetNetwork && targetNetwork.name && targetNetwork.name !== "localhost") {
-    BACKEND_URL = "https://backend.multisig.lol:49899/";
+    // BACKEND_URL = "https://backend.multisig.lol:49899/";
+    BACKEND_URL = "http://localhost:49899";
   }
 
   // 🔭 block explorer URL
@@ -199,7 +207,8 @@ function App(props) {
   const mainnetContracts = useContractLoader(mainnetProvider, contractConfig);
 
   const nonce = useContractReader(readContracts, walletContractName, "nonce");
-  const signaturesRequired = useContractReader(readContracts, walletContractName, "signaturesRequired");
+  // console.log(`n-🔴 => App => nonce`, nonce?.toString());
+  // const signaturesRequired = useContractReader(readContracts, walletContractName, "signaturesRequired");
 
   const loadWeb3Modal = useCallback(async () => {
     //const provider = await web3Modal.connect();
@@ -228,6 +237,9 @@ function App(props) {
     readContracts.MultiSigWallet = new ethers.Contract(selectedWalletAddress, multiSigWalletABI, localProvider);
     writeContracts.MultiSigWallet = new ethers.Contract(selectedWalletAddress, multiSigWalletABI, userSigner);
     setIsWalletLoaded(true);
+    let sigRequired = await readContracts.MultiSigWallet.signaturesRequired();
+    // console.log(`n-🔴 => loadWalletContract => sigRequired`, sigRequired);
+    setSignaturesRequired(sigRequired);
   };
 
   const onChangeWallet = (walletAddress, walletName) => {
@@ -240,6 +252,7 @@ function App(props) {
         selectedWalletName: walletName,
       },
     });
+    history.push("/");
   };
   const onChangeNetwork = async value => {
     if (targetNetwork.chainId !== NETWORKS[value].chainId) {
@@ -442,6 +455,13 @@ function App(props) {
     walletData,
     setWalletData,
     targetNetwork,
+    multiSigWalletABI,
+    importedWalletList,
+    setImportedWalletList,
+    userWallets,
+    setUserWallets,
+    hiddenWalletList,
+    setHiddenWalletList,
   };
 
   return (
@@ -462,6 +482,24 @@ function App(props) {
 
           <Route exact path="/transcactions">
             <Transcations />
+          </Route>
+
+          <Route exact path="/apps">
+            <SafeApps />
+          </Route>
+
+          <Route exact path="/safeApp">
+            <SafeInjectProvider>
+              <SafeApp />
+            </SafeInjectProvider>
+          </Route>
+
+          <Route exact path="/manage">
+            <Manage />
+          </Route>
+
+          <Route exact path="/help">
+            <div>Work in progress...</div>
           </Route>
         </Switch>
 

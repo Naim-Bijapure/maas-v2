@@ -14,7 +14,7 @@ export default function CreateWallet() {
   const { address, price, mainnetProvider, tx, writeContracts, refreshToggle, setRefreshToggle } = state;
   const [owners, setOwners] = useState([]);
   const [preComputedAddress, setPreComputedAddress] = useState(undefined);
-  console.log(`n-🔴 => CreateWallet => preComputedAddress`, preComputedAddress);
+  // console.log(`n-🔴 => CreateWallet => preComputedAddress`, preComputedAddress);
   const [form] = Form.useForm();
 
   const onSubmit = values => {
@@ -22,13 +22,13 @@ export default function CreateWallet() {
 
     const signaturesRequired = values["signatureCount"];
     const walletName = values["walletName"];
-    const owner = values["owner"];
+    const ownerList = [values["owner"], ...owners];
     const amount = values["amount"] ? values["amount"] : 0;
 
     try {
       tx(
         // create 2
-        writeContracts[FACTORY_CONTRACT].create2([owner], signaturesRequired, walletName, {
+        writeContracts[FACTORY_CONTRACT].create2(ownerList, signaturesRequired, walletName, {
           value: ethers.utils.parseEther("" + parseFloat(amount).toFixed(12)),
         }),
         async update => {
@@ -44,7 +44,7 @@ export default function CreateWallet() {
             console.log("tx update confirmed!");
 
             let computed_wallet_address = await writeContracts[FACTORY_CONTRACT].computedAddress(walletName);
-            console.log(`n-🔴 => onSubmit => computed_wallet_address`, computed_wallet_address);
+            // console.log(`n-🔴 => onSubmit => computed_wallet_address`, computed_wallet_address);
 
             form.resetFields();
             setPreComputedAddress(undefined);
@@ -60,7 +60,7 @@ export default function CreateWallet() {
   };
 
   const onFinishFailed = errorInfo => {
-    console.log(`n-🔴 => onFinishFailed => errorInfo`, errorInfo);
+    // console.log(`n-🔴 => onFinishFailed => errorInfo`, errorInfo);
   };
 
   const checkWalletExist = async walletName => {
@@ -69,7 +69,7 @@ export default function CreateWallet() {
       return;
     }
     let computed_wallet_address = await writeContracts[FACTORY_CONTRACT].computedAddress(walletName);
-    console.log(`n-🔴 => checkWalletExist => computed_wallet_address`, computed_wallet_address);
+    // console.log(`n-🔴 => checkWalletExist => computed_wallet_address`, computed_wallet_address);
 
     let isContractExists = await writeContracts[FACTORY_CONTRACT].provider.getCode(computed_wallet_address);
     if (isContractExists !== "0x") {
@@ -140,7 +140,7 @@ export default function CreateWallet() {
                     async validator(_, value) {
                       let walletName = value;
                       let isExist = await checkWalletExist(walletName);
-                      console.log(`n-🔴 => validator => isExist`, isExist);
+                      // console.log(`n-🔴 => validator => isExist`, isExist);
                       if (isExist) {
                         return Promise.reject(new Error("wallet already exists"));
                       }

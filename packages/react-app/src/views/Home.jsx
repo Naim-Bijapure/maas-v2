@@ -45,18 +45,26 @@ function Home() {
   const pageSize = 10;
   const totalEvents = allExecuteTransactionEvents.length;
 
-  // const signaturesRequired = useContractReader(readContracts, walletContractName, "signaturesRequired");
+  // const nonce = useContractReader(readContracts, walletContractName, "nonce");
+
+  // const signaturesRequired2 = useContractReader(readContracts, walletContractName, "signaturesRequired");
+  // console.log(`n-🔴 => Home => signaturesRequired2`, signaturesRequired2?.toString());
 
   const [executeTransactionEvents, setExecuteTransactionEvents] = useState(undefined);
   const [walletName, setWalletName] = useState();
   const [txListLoading, setTxListLoading] = useState(true);
 
-  const getWalletName = async () => {
+  const loadWalletData = async () => {
     let factoryVersion = await getFactoryVersion(readContracts[walletContractName]);
     if (factoryVersion === 1) {
       if (readContracts[walletContractName]) {
         let walletName = await readContracts[walletContractName].name();
         setWalletName(walletName);
+
+        // on load wallet update latest nonce and signature required data
+        let nonce = await readContracts[walletContractName].nonce();
+        // let signaturesRequired = await readContracts[walletContractName].signaturesRequired();
+        // dispatch({ payload: { nonce, signaturesRequired } });
       }
     } else {
       setWalletName("");
@@ -65,9 +73,15 @@ function Home() {
 
   useEffect(() => {
     if (readContracts && walletContractName in readContracts && selectedWalletAddress) {
-      void getWalletName();
+      void loadWalletData();
     }
   }, [readContracts, selectedWalletAddress]);
+
+  // useEffect(() => {
+  //   if (nonce) {
+  //     console.log(`n-🔴 => useEffect => nonce`, nonce?.toString());
+  //   }
+  // }, [nonce]);
 
   return (
     <>

@@ -232,3 +232,10 @@ export const Sleep = time =>
     }, time),
   );
 
+export const TX_TYPES = {
+  SEND_ETH: "send",
+  CUSTOM_CALL: "custom call",
+  ADD_SIGNER: "addSigner",
+  REMOVE_SIGNER: "removeSigner",
+  SAFE_APP: "SAFE APP",
+};

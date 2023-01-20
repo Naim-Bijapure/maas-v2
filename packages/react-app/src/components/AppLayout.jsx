@@ -11,6 +11,7 @@ import { Layout, Menu } from "antd";
 import React from "react";
 import { Link } from "react-router-dom";
 import WalletList from "./MultiSig/WalletList";
+import { useStore } from "../store/useStore";
 
 const { Header, Content, Footer, Sider } = Layout;
 
@@ -68,14 +69,14 @@ const MenuItems = [
     </>,
   ),
 
-  getItem(
-    "Settings",
-    "6",
-    <>
-      <SettingOutlined />
-      <Link className="m-1" to="/settings"></Link>
-    </>,
-  ),
+  // getItem(
+  //   "Settings",
+  //   "6",
+  //   <>
+  //     <SettingOutlined />
+  //     <Link className="m-1" to="/settings"></Link>
+  //   </>,
+  // ),
 
   getItem(
     "Help",
@@ -87,6 +88,9 @@ const MenuItems = [
   ),
 ];
 const AppLayout = ({ header, children }) => {
+  const [state, dispatch] = useStore();
+  const { selectedWalletAddress } = state;
+
   return (
     <Layout
       style={{
@@ -98,7 +102,7 @@ const AppLayout = ({ header, children }) => {
         <WalletList />
 
         {/* menu list */}
-        <Menu theme="light" defaultSelectedKeys={["1"]} mode="inline" items={MenuItems} />
+        <Menu theme="light" defaultSelectedKeys={["1"]} mode="inline" items={MenuItems} key={selectedWalletAddress} />
       </Sider>
       <Layout className="site-layout">
         {/* header */}

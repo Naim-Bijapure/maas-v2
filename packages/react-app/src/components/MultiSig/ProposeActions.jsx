@@ -5,10 +5,13 @@ import { Link } from "react-router-dom";
 import { Button, Typography, Card, Tooltip, Input } from "antd";
 import { SendOutlined, SearchOutlined } from "@ant-design/icons";
 import axios from "axios";
+import moment from "moment";
 
 import { AddressInput, EtherInput, WallectConnectInput, WalletConnectV2 } from "..";
 import { useLocalStorage } from "../../hooks";
 import { useStore } from "../../store/useStore";
+import { TX_TYPES } from "../../constants";
+import ConfirmTxModal from "./ConfirmTxModal";
 
 const { Title } = Typography;
 
@@ -31,47 +34,51 @@ function ProposeActions({ type }) {
   const [toAddress, setToAddress] = useState(undefined);
   const [amount, setAmount] = useState(0);
   const [customCallData, setCustomCallData] = useState("");
+  const [confirmPropose, setConfirmPropose] = useState(false);
 
   const onPropose = async () => {
-    try {
-      let callData = type === "sendEth" ? "0x" : customCallData;
-      let executeToAddress = toAddress;
-      const nonce = await readContracts[walletContractName].nonce();
+    setConfirmPropose(true);
 
-      const newHash = await readContracts[walletContractName].getTransactionHash(
-        nonce,
-        executeToAddress,
-        ethers.utils.parseEther("" + parseFloat(amount).toFixed(12)),
-        callData,
-      );
-
-      const signature = await userSigner?.signMessage(ethers.utils.arrayify(newHash));
-
-      const recover = await readContracts[walletContractName].recover(newHash, signature);
-
-      const isOwner = await readContracts[walletContractName].isOwner(recover);
-      console.log(`n-🔴 => onPropose => isOwner`, isOwner);
-
-      if (isOwner) {
-        const res = await axios.post(`${BACKEND_URL}/addPoolTx`, {
-          chainId: targetNetwork.chainId,
-          walletAddress: readContracts[walletContractName]?.address,
-          nonce: nonce?.toString(),
-          to: executeToAddress,
-          amount,
-          data: callData,
-          hash: newHash,
-          signatures: [signature],
-          signers: [recover],
-        });
-        console.log(`n-🔴 => onPropose => res`, res.data);
-
-        setAmount(0);
-        setToAddress("");
-      }
-    } catch (error) {
-      console.log("n-Error: ", error);
-    }
+    // try {
+    //   let callData = type === TX_TYPES.SEND_ETH ? "0x" : customCallData;
+    //   let executeToAddress = toAddress;
+    //   const nonce = await readContracts[walletContractName].nonce();
+    //   const newHash = await readContracts[walletContractName].getTransactionHash(
+    //     nonce,
+    //     executeToAddress,
+    //     ethers.utils.parseEther("" + parseFloat(amount).toFixed(12)),
+    //     callData,
+    //   );
+    //   const signature = await userSigner?.signMessage(ethers.utils.arrayify(newHash));
+    //   const recover = await readContracts[walletContractName].recover(newHash, signature);
+    //   const isOwner = await readContracts[walletContractName].isOwner(recover);
+    //   console.log(`n-🔴 => onPropose => isOwner`, isOwner);
+    //   if (isOwner) {
+    //     const res = await axios.post(`${BACKEND_URL}/addPoolTx`, {
+    //       txId: Date.now(),
+    //       chainId: targetNetwork.chainId,
+    //       walletAddress: readContracts[walletContractName]?.address,
+    //       nonce: nonce?.toString(),
+    //       to: executeToAddress,
+    //       amount,
+    //       data: callData,
+    //       hash: newHash,
+    //       signatures: [signature],
+    //       signers: [recover],
+    //       type,
+    //       status: "inQueue",
+    //       createdAt: moment().format("YYYY-MM-DD HH:mm"),
+    //       // executedAt: "10-10-2023 10:10",
+    //       createdBy: address,
+    //       // executedBy: "0x0fAb64624733a7020D332203568754EB1a37DB89",
+    //     });
+    //     console.log(`n-🔴 => onPropose => res`, res.data);
+    //     setAmount(0);
+    //     setToAddress("");
+    //   }
+    // } catch (error) {
+    //   console.log("n-Error: ", error);
+    // }
   };
 
   const SendEth = (
@@ -144,16 +151,19 @@ function ProposeActions({ type }) {
   );
   return (
     <div className="flex flex-col items-center">
-      {type === "sendEth" && SendEth}
-      {type === "customCall" && CustomCall}
-      {/* {type === "walletConnect" && (
-        <WallectConnectInput
-          chainId={targetNetwork.chainId}
-          walletAddress={selectedWalletAddress}
-          mainnetProvider={mainnetProvider}
-          price={price}
+      {type === TX_TYPES.SEND_ETH && SendEth}
+      {type === TX_TYPES.CUSTOM_CALL && CustomCall}
+      {confirmPropose && (
+        <ConfirmTxModal
+          isOpen={confirmPropose}
+          onClose={setConfirmPropose}
+          type={type}
+          from={selectedWalletAddress}
+          to={toAddress}
+          amount={amount}
+          callData={type === TX_TYPES.SEND_ETH ? "0x" : customCallData}
         />
-      )} */}
+      )}
     </div>
   );
 }

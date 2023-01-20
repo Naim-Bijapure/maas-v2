@@ -2,6 +2,7 @@ import React from "react";
 import { message, Dropdown, Button } from "antd";
 import { Link } from "react-router-dom";
 import { useEventListener } from "eth-hooks/events";
+import { ethers } from "ethers";
 
 import { Address } from "../";
 import { useStore } from "../../store/useStore";
@@ -14,18 +15,27 @@ const WALLET_CONTRACT_ADDRESS = "0x924E029aa245AbADC5Ebd379457eAa48Cf0E4422";
 export default function WalletList() {
   const [store, dispatch] = useStore();
   const [currentWalletName, setCurrentWalletName] = useState();
+  const [ownedWallets, setOwnedWallets] = useState([]);
+  // console.log(`n-🔴 => ownedWallets`, ownedWallets);
   const {
     address,
     readContracts,
     localProvider,
     factoryContractName,
+    // walletContractName,
     selectedWalletAddress,
     onChangeWallet,
     refreshToggle,
-    setRefreshToggle,
+    // setRefreshToggle,
     walletData,
-    setWalletData,
+    // setWalletData,
     targetNetwork,
+    // multiSigWalletABI,
+    importedWalletList,
+    // userWallets,
+    setUserWallets,
+    hiddenWalletList,
+    // setHiddenWalletList,
   } = store;
 
   // const wallets = useEventListener(
@@ -36,12 +46,21 @@ export default function WalletList() {
   //   0,
   // );
 
+  const owners = useEvent(
+    factoryContractName in readContracts && readContracts,
+    factoryContractName,
+    "Owners",
+    refreshToggle,
+  );
+  // console.log(`n-🔴 => WalletList => owners`, owners);
+
   const wallets = useEvent(
     factoryContractName in readContracts && readContracts,
     factoryContractName,
     "Create2Event",
     refreshToggle,
   );
+  // console.log(`n-🔴 => WalletList => wallets`, wallets);
 
   const handleButtonClick = e => {
     message.info("Click on left button.");
@@ -58,7 +77,11 @@ export default function WalletList() {
       return [];
     }
     return wallets
-      .filter(data => data.args.creator === address)
+      .filter(
+        data =>
+          ownedWallets.includes(data.args.contractAddress) &&
+          hiddenWalletList.includes(data.args.contractAddress) === false,
+      )
       .map(data => {
         let wallet = data.args;
         return {
@@ -74,11 +97,55 @@ export default function WalletList() {
     items: walletList,
     onClick: handleWalletChange,
   };
+  const getOwnedWallets = async (wallets, owners) => {
+    let fromWallets = [];
+    for (const { args } of wallets) {
+      const { owners } = args;
+      const isOwner = await owners.includes(address);
+      if (isOwner) {
+        fromWallets.push(args.contractAddress);
+      }
+    }
 
-  useEffect(() => {
+    let fromOwners = [];
+    for (const { args } of owners) {
+      // const wallet = new ethers.Contract(args.contractAddress, multiSigWalletABI, localProvider);
+      const { owners } = args;
+      const isOwner = await owners.includes(address);
+      if (isOwner) {
+        fromOwners.push(args.contractAddress);
+      }
+    }
+
+    const ownedWallets = [...new Set([...fromWallets, ...fromOwners])];
+
+    return ownedWallets;
+  };
+
+  const loadWallets = async () => {
+    // loding from frontend event , listten costly on performance
+    let userWallets = await getOwnedWallets(wallets, owners);
+    // console.log(`n-🔴 => loadWallets => userWallets`, userWallets);
+
+    // loading from contract filter
+    // let ownedWallets = await readContracts[factoryContractName].getWallets(address);
+
+    // add imported wallets in owned wallets
+    userWallets = [...userWallets, ...importedWalletList];
+    // remove hidden wallets
+    // userWallets = userWallets.filter(contractAddress => hiddenWalletList.includes(contractAddress) === false);
+
+    // console.log(`n-🔴 => loadWallets => userWallets`, userWallets);
+
+    setOwnedWallets([...userWallets]);
+
     let filteredWallets = wallets.filter(data => {
-      return data.args.creator === address;
+      return userWallets.includes(data.args.contractAddress);
     });
+    // console.log(`n-🔴 => filteredWallets => filteredWallets`, filteredWallets);
+
+    setUserWallets(filteredWallets);
+
     if (wallets && wallets.length > 0 && filteredWallets.length > 0 && address) {
       let lastWallet = filteredWallets[filteredWallets.length - 1].args;
 
@@ -97,7 +164,13 @@ export default function WalletList() {
         return;
       }
     }
-  }, [wallets, address]);
+  };
+
+  useEffect(() => {
+    if (localProvider && wallets.length > 0 && owners.length > 0 && address) {
+      void loadWallets();
+    }
+  }, [wallets, address, owners]);
 
   return (
     <div>
@@ -111,6 +184,17 @@ export default function WalletList() {
         <Button type="link" shape="" size={"small"}>
           <Link to={"/createWallet"}>Create wallet</Link>
         </Button>
+
+        {/* <Button
+          shape=""
+          size={"small"}
+          onClick={async () => {
+            let data = await readContracts[factoryContractName].getWallets(address);
+            console.log(`n-🔴 => onClick={ => data`, data);
+          }}
+        >
+          test
+        </Button> */}
       </div>
     </div>
   );
